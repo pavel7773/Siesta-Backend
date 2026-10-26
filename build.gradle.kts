@@ -32,13 +32,13 @@ dependencies {
 
     implementation("org.eclipse.angus:jakarta.mail:2.0.5")
     implementation("com.password4j:password4j:1.8.4")
-    implementation("io.ktor:ktor-server-rate-limit-jvm:3.5.2")
-    implementation("io.ktor:ktor-server-forwarded-header-jvm:3.5.2")
+    implementation("io.ktor:ktor-server-rate-limit-jvm:3.6.0")
+    implementation("io.ktor:ktor-server-forwarded-header-jvm:3.6.0")
 
     implementation("org.flywaydb:flyway-core:13.8.1")
     implementation("org.flywaydb:flyway-database-postgresql:13.8.1")
 
-    implementation("io.ktor:ktor-server-auth-jwt-jvm:3.5.2")
+    implementation("io.ktor:ktor-server-auth-jwt-jvm:3.6.0")
 
     testImplementation(kotlin("test"))
     testImplementation(ktorLibs.server.testHost)
