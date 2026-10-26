@@ -1,0 +1,63 @@
+@baseUrl = http://127.0.0.1:8080
+@token = YOUR_JWT_TOKEN
+
+### Health check
+GET {{baseUrl}}/health
+
+### Получить меню
+GET {{baseUrl}}/menu
+
+### Логин — синтетические тестовые данные
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "phone": "79990001122",
+  "password": "ExamplePassword123!"
+}
+
+### Получить профиль
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+### Обновить имя
+PATCH {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Тестовый пользователь"
+}
+
+### Обновить адрес
+PATCH {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "address": "Тестовый адрес"
+}
+
+### Получить заказы
+GET {{baseUrl}}/orders
+Authorization: Bearer {{token}}
+
+### Создать заказ
+POST {{baseUrl}}/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Idempotency-Key: foodhub-example-001
+
+{
+  "name": "Тестовый пользователь",
+  "phone": "79990001122",
+  "comment": "Тестовый заказ",
+  "deliveryType": "Самовывоз",
+  "address": "",
+  "orderItems": [
+    {
+      "dishId": 1,
+      "quantity": 1
+    }
+  ]
+}

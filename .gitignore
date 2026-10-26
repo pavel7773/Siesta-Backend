@@ -1,0 +1,26 @@
+# Gradle
+.gradle/
+build/
+.kotlin/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+
+# Local logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# http-client
+http-client.private.env.json
