@@ -25,9 +25,23 @@ fun Application.rootModule() {
                 call.request.origin.remoteHost
             }
         }
+        val smsTestMode =
+            System.getenv("SMS_TEST_MODE")
+                ?.trim()
+                ?.equals(
+                    "true",
+                    ignoreCase = true
+                )
+                ?: false
+
         register(RateLimitName("register")) {
             rateLimiter(
-                limit = 5,
+                limit =
+                    if (smsTestMode) {
+                        100
+                    } else {
+                        5
+                    },
                 refillPeriod = 1.minutes
             )
 
