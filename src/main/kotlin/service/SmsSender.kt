@@ -20,20 +20,21 @@ class SmsSender {
         code: String
     ): Unit = withContext(Dispatchers.IO) {
 
-        require(phone.matches(Regex("""7\d{10}"""))) {
+        require(
+            phone.matches(
+                Regex("""7\d{10}""")
+            )
+        ) {
             "Некорректный номер телефона"
         }
 
-        require(code.matches(Regex("""\d{6}"""))) {
+        require(
+            code.matches(
+                Regex("""\d{6}""")
+            )
+        ) {
             "Код должен содержать 6 цифр"
         }
-
-        val apiId =
-            System.getenv("SMS_RU_API_ID")
-                ?.takeIf { it.isNotBlank() }
-                ?: error(
-                    "Не задана переменная SMS_RU_API_ID"
-                )
 
         val testMode =
             System.getenv("SMS_TEST_MODE")
@@ -44,30 +45,41 @@ class SmsSender {
                 )
                 ?: false
 
+        // В тестовом режиме вообще не обращаемся к SMS.ru.
+        // Код выводим только в Railway logs.
+        if (testMode) {
+
+            val maskedPhone =
+                phone.take(2) +
+                        "*****" +
+                        phone.takeLast(4)
+
+            println(
+                "SMS_TEST_CODE phone=$maskedPhone code=$code"
+            )
+
+            return@withContext
+        }
+
+        val apiId =
+            System.getenv("SMS_RU_API_ID")
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+                ?: error(
+                    "Не задана переменная SMS_RU_API_ID"
+                )
+
         val message =
             "Код СИЕСТА: $code. Действует 10 минут."
 
         val parameters =
-            buildList {
-                add(
-                    "api_id" to apiId
-                )
-                add(
-                    "to" to phone
-                )
-                add(
-                    "msg" to message
-                )
-                add(
-                    "json" to "1"
-                )
-
-                if (testMode) {
-                    add(
-                        "test" to "1"
-                    )
-                }
-            }
+            listOf(
+                "api_id" to apiId,
+                "to" to phone,
+                "msg" to message,
+                "json" to "1"
+            )
 
         val body =
             parameters.joinToString("&") {
@@ -108,7 +120,9 @@ class SmsSender {
                 HttpResponse.BodyHandlers.ofString()
             )
 
-        if (response.statusCode() !in 200..299) {
+        if (
+            response.statusCode() !in 200..299
+        ) {
             error(
                 "SMS.ru вернул HTTP ${response.statusCode()}"
             )
@@ -142,18 +156,6 @@ class SmsSender {
                 ?.content == "OK"
         ) {
             "SMS.ru не отправил сообщение"
-        }
-
-        if (testMode) {
-
-            val maskedPhone =
-                phone.take(2) +
-                        "*****" +
-                        phone.takeLast(4)
-
-            println(
-                "SMS_TEST_CODE phone=$maskedPhone code=$code"
-            )
         }
     }
 
