@@ -35,24 +35,52 @@ class SmsSender {
                     "Не задана переменная SMS_RU_API_ID"
                 )
 
+        val testMode =
+            System.getenv("SMS_TEST_MODE")
+                ?.trim()
+                ?.equals(
+                    "true",
+                    ignoreCase = true
+                )
+                ?: false
+
         val message =
             "Код СИЕСТА: $code. Действует 10 минут."
 
-        val body = listOf(
-            "api_id" to apiId,
-            "to" to phone,
-            "msg" to message,
-            "json" to "1"
-        ).joinToString("&") { (key, value) ->
-
-            val encoded =
-                URLEncoder.encode(
-                    value,
-                    StandardCharsets.UTF_8
+        val parameters =
+            buildList {
+                add(
+                    "api_id" to apiId
+                )
+                add(
+                    "to" to phone
+                )
+                add(
+                    "msg" to message
+                )
+                add(
+                    "json" to "1"
                 )
 
-            "$key=$encoded"
-        }
+                if (testMode) {
+                    add(
+                        "test" to "1"
+                    )
+                }
+            }
+
+        val body =
+            parameters.joinToString("&") {
+                    (key, value) ->
+
+                val encoded =
+                    URLEncoder.encode(
+                        value,
+                        StandardCharsets.UTF_8
+                    )
+
+                "$key=$encoded"
+            }
 
         val request =
             HttpRequest.newBuilder()
@@ -114,6 +142,18 @@ class SmsSender {
                 ?.content == "OK"
         ) {
             "SMS.ru не отправил сообщение"
+        }
+
+        if (testMode) {
+
+            val maskedPhone =
+                phone.take(2) +
+                        "*****" +
+                        phone.takeLast(4)
+
+            println(
+                "SMS_TEST_CODE phone=$maskedPhone code=$code"
+            )
         }
     }
 
