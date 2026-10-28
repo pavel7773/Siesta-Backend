@@ -33,7 +33,8 @@ class VerificationCodeService {
         userId: Int,
         purpose: String,
         channel: String,
-        destination: String
+        destination: String,
+        forcedCode: String? = null
     ): CodeIssueResult = withContext(Dispatchers.IO) {
         validateCodeContext(
             purpose = purpose,
@@ -72,7 +73,9 @@ class VerificationCodeService {
                 return@transaction CodeIssueResult.TooSoon
             }
 
-            val code = VerificationCodeCrypto.generateCode()
+            val code =
+                forcedCode
+                    ?: VerificationCodeCrypto.generateCode()
 
             val hash = VerificationCodeCrypto.hashCode(
                 userId = userId,
@@ -533,12 +536,27 @@ class VerificationCodeService {
             }
                 ?: return@withContext false
 
+        val testMode =
+            System.getenv("SMS_TEST_MODE")
+                ?.trim()
+                ?.equals(
+                    "true",
+                    ignoreCase = true
+                )
+                ?: false
+
         val result =
             issueCode(
                 userId = userId,
                 purpose = "PHONE_REGISTRATION",
                 channel = "SMS",
-                destination = phone
+                destination = phone,
+                forcedCode =
+                    if (testMode) {
+                        "111111"
+                    } else {
+                        null
+                    }
             )
 
         when (result) {
