@@ -4,6 +4,8 @@ package com.example.catering.database.table
 import com.example.catering.security.PasswordHasher
 import com.example.catering.security.VerificationCodeCrypto
 import com.example.catering.service.EmailSender
+import com.example.catering.service.SmsSender
+import com.example.catering.utils.normalizePhone
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -33,14 +35,9 @@ class VerificationCodeService {
         channel: String,
         destination: String
     ): CodeIssueResult = withContext(Dispatchers.IO) {
-        require(
-            purpose == "EMAIL_VERIFICATION" ||
-                    purpose == "PASSWORD_RESET"
-        )
-        require(channel == "EMAIL" || channel == "SMS")
-        require(
-            purpose != "EMAIL_VERIFICATION" ||
-                    channel == "EMAIL"
+        validateCodeContext(
+            purpose = purpose,
+            channel = channel
         )
 
         transaction {
@@ -120,14 +117,9 @@ class VerificationCodeService {
         onVerified: () -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
 
-        require(
-            purpose == "EMAIL_VERIFICATION" ||
-                    purpose == "PASSWORD_RESET"
-        )
-        require(channel == "EMAIL" || channel == "SMS")
-        require(
-            purpose != "EMAIL_VERIFICATION" ||
-                    channel == "EMAIL"
+        validateCodeContext(
+            purpose = purpose,
+            channel = channel
         )
 
         transaction {
@@ -503,5 +495,169 @@ class VerificationCodeService {
         }
     }
 
+    private fun validateCodeContext(
+        purpose: String,
+        channel: String
+    ) {
+        require(
+            (
+                    purpose == "EMAIL_VERIFICATION" &&
+                            channel == "EMAIL"
+                    ) ||
+                    (
+                            purpose == "PASSWORD_RESET" &&
+                                    channel == "EMAIL"
+                            ) ||
+                    (
+                            purpose == "PHONE_REGISTRATION" &&
+                                    channel == "SMS"
+                            )
+        ) {
+            "Недопустимое назначение кода"
+        }
+    }
+    suspend fun sendPhoneRegistrationCode(
+        userId: Int
+    ): Boolean = withContext(Dispatchers.IO) {
 
+        val phone =
+            transaction {
+                UsersTable
+                    .selectAll()
+                    .where {
+                        (UsersTable.id eq userId) and
+                                UsersTable.phoneVerifiedAt.isNull()
+                    }
+                    .firstOrNull()
+                    ?.get(UsersTable.phone)
+            }
+                ?: return@withContext false
+
+        val result =
+            issueCode(
+                userId = userId,
+                purpose = "PHONE_REGISTRATION",
+                channel = "SMS",
+                destination = phone
+            )
+
+        when (result) {
+            is CodeIssueResult.Created -> {
+                deliverSmsCode(
+                    userId = userId,
+                    phone = phone,
+                    issued = result
+                )
+
+                true
+            }
+
+            CodeIssueResult.TooSoon -> false
+        }
+    }
+    suspend fun verifyPhoneRegistration(
+        rawPhone: String,
+        enteredCode: String
+    ): Boolean {
+
+        val phone =
+            normalizePhone(rawPhone)
+
+        if (
+            phone.length != 11 ||
+            !phone.startsWith("7")
+        ) {
+            return false
+        }
+
+        val userId =
+            withContext(Dispatchers.IO) {
+                transaction {
+                    UsersTable
+                        .selectAll()
+                        .where {
+                            (UsersTable.phone eq phone) and
+                                    UsersTable.phoneVerifiedAt.isNull()
+                        }
+                        .firstOrNull()
+                        ?.get(UsersTable.id)
+                }
+            } ?: return false
+
+        return verifyAndUseCode(
+            userId = userId,
+            purpose = "PHONE_REGISTRATION",
+            channel = "SMS",
+            destination = phone,
+            enteredCode = enteredCode,
+
+            onVerified = {
+
+                val updated =
+                    UsersTable.update({
+                        (UsersTable.id eq userId) and
+                                (UsersTable.phone eq phone) and
+                                UsersTable.phoneVerifiedAt.isNull()
+                    }) {
+                        it[phoneVerifiedAt] =
+                            System.currentTimeMillis()
+                    }
+
+                check(updated == 1) {
+                    "Не удалось подтвердить телефон"
+                }
+            }
+        )
+    }
+    private suspend fun deliverSmsCode(
+        userId: Int,
+        phone: String,
+        issued: CodeIssueResult.Created
+    ) {
+        try {
+            SmsSender().sendCode(
+                phone = phone,
+                code = issued.code
+            )
+
+        } catch (error: Exception) {
+
+            withContext(
+                NonCancellable + Dispatchers.IO
+            ) {
+                transaction {
+
+                    val hash =
+                        VerificationCodeCrypto
+                            .hashCode(
+                                userId = userId,
+                                purpose =
+                                    "PHONE_REGISTRATION",
+                                channel = "SMS",
+                                destination = phone,
+                                code = issued.code
+                            )
+
+                    codes.update({
+                        (codes.userId eq userId) and
+                                (
+                                        codes.purpose eq
+                                                "PHONE_REGISTRATION"
+                                        ) and
+                                (codes.channel eq "SMS") and
+                                (codes.destination eq phone) and
+                                (codes.codeHash eq hash) and
+                                codes.consumedAt.isNull()
+                    }) {
+                        it[consumedAt] =
+                            OffsetDateTime.now(
+                                ZoneOffset.UTC
+                            )
+                    }
+                }
+            }
+
+            throw error
+        }
+    }
 }

@@ -54,7 +54,9 @@ class AuthService(
         if (!isPasswordCorrect) {
             throw InvalidCredentialsException()
         }
-
+        if (!userRepository.isPhoneVerified(existingUser.id)) {
+            throw PhoneNotVerifiedException()
+        }
         return existingUser
     }
 
@@ -132,3 +134,5 @@ class PasswordChangeConflictException :
     RuntimeException(
         "Пароль уже был изменён. Повторите вход в аккаунт"
     )
+class PhoneNotVerifiedException :
+    RuntimeException("Номер телефона не подтверждён")

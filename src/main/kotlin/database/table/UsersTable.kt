@@ -20,6 +20,8 @@ object UsersTable : Table("users") {
     val sessionVersion = long("session_version").default(0L)
 
     val email = varchar("email", 254).nullable()
+    val phoneVerifiedAt =
+        long("phone_verified_at").nullable()
 
     val emailVerifiedAt = long("email_verified_at").nullable()
 

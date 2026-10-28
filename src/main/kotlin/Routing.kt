@@ -1,12 +1,14 @@
 package com.example.catering
 
 import com.example.catering.database.DatabaseFactory
+import com.example.catering.database.table.VerificationCodeService
 import com.example.catering.model.request.ChangePasswordRequest
 import com.example.catering.model.request.CreateOrderRequest
 import com.example.catering.model.request.LoginRequest
 import com.example.catering.model.request.RegisterRequest
 import com.example.catering.model.request.UpdateProfileRequest
 import com.example.catering.model.response.AuthResponse
+import com.example.catering.model.response.RegistrationPendingResponse
 import com.example.catering.model.response.UserResponse
 import com.example.catering.repository.DatabaseOrderByIdempotencyKeyFinder
 import com.example.catering.repository.MenuDishRepository
@@ -14,6 +16,7 @@ import com.example.catering.repository.OrderRepository
 import com.example.catering.repository.UserRepository
 import com.example.catering.rout.emailVerificationRoutes
 import com.example.catering.rout.passwordResetRoutes
+import com.example.catering.rout.phoneRegistrationRoutes
 import com.example.catering.security.JwtService
 import com.example.catering.security.PasswordHasher
 import com.example.catering.service.AuthService
@@ -21,6 +24,7 @@ import com.example.catering.service.InvalidCredentialsException
 import com.example.catering.service.InvalidNewPasswordException
 import com.example.catering.service.PasswordChangeConflictException
 import com.example.catering.service.PhoneAlreadyRegisteredException
+import com.example.catering.service.PhoneNotVerifiedException
 import com.example.catering.service.SamePasswordException
 import com.example.catering.utils.normalizePhone
 import io.ktor.http.*
@@ -31,6 +35,7 @@ import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.utils.io.CancellationException
 
 fun Application.configureRouting(jwtService: JwtService) {
     val userRepository = UserRepository()
@@ -43,6 +48,8 @@ fun Application.configureRouting(jwtService: JwtService) {
         userRepository = userRepository,
         passwordHasher = PasswordHasher()
     )
+    val verificationCodeService =
+        VerificationCodeService()
 
     routing {
         get("/") {
@@ -119,35 +126,30 @@ fun Application.configureRouting(jwtService: JwtService) {
                     )
                     return@post
                 }
+                val codeSent =
+                    try {
+                        verificationCodeService
+                            .sendPhoneRegistrationCode(
+                                user.id
+                            )
 
+                    } catch (
+                        e: CancellationException
+                    ) {
+                        throw e
 
-                val sessionVersion = userRepository.getSessionVersion(user.id)
-
-                if (sessionVersion == null) {
-                    call.respondText(
-                        text = "Не удалось получить данные сессии",
-                        status = HttpStatusCode.InternalServerError
-                    )
-                    return@post
-                }
-
-                val token = jwtService.generateToken(
-                    userId = user.id,
-                    sessionVersion = sessionVersion
-                )
-
+                    } catch (e: Exception) {
+                        false
+                    }
 
                 call.respond(
-                    status = HttpStatusCode.Created,
-                    message = AuthResponse(
-                        userResponse = UserResponse(
-                            id = user.id,
-                            name = user.name,
+                    status =
+                        HttpStatusCode.Accepted,
+                    message =
+                        RegistrationPendingResponse(
                             phone = user.phone,
-                            address = user.address
-                        ),
-                        token = token
-                    )
+                            codeSent = codeSent
+                        )
                 )
             }
         }
@@ -166,8 +168,14 @@ fun Application.configureRouting(jwtService: JwtService) {
                         status = HttpStatusCode.Unauthorized
                     )
                     return@post
-                }
 
+                } catch (e: PhoneNotVerifiedException) {
+                    call.respondText(
+                        "Подтвердите номер телефона",
+                        status = HttpStatusCode.Forbidden
+                    )
+                    return@post
+                }
 
                 val sessionVersion = userRepository.getSessionVersion(user.id)
 
@@ -477,5 +485,7 @@ fun Application.configureRouting(jwtService: JwtService) {
             }
         emailVerificationRoutes()
         passwordResetRoutes()
+        phoneRegistrationRoutes(jwtService)
+
         }
     }

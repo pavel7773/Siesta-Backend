@@ -170,6 +170,19 @@ class UserRepository {
                 ?.get(UsersTable.sessionVersion)
         }
     }
+    suspend fun isPhoneVerified(
+        userId: Int
+    ): Boolean = withContext(Dispatchers.IO) {
 
+        transaction {
+            UsersTable
+                .selectAll()
+                .where {
+                    UsersTable.id eq userId
+                }
+                .firstOrNull()
+                ?.get(UsersTable.phoneVerifiedAt) != null
+        }
+    }
 
 }

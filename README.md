@@ -1,8 +1,8 @@
-# СИЕСТА — Backend
+# CateringBackend — СИЕСТА / Food Hub
 
-[![Backend CI](https://github.com/pavel7773/Siesta-Backend/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/pavel7773/Siesta-Backend/actions/workflows/backend-ci.yml)
+[![Backend CI](https://github.com/pavel7773/CateringBackend/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/pavel7773/CateringBackend/actions/workflows/backend-ci.yml)
 
-**Kotlin/Ktor REST API** для [Android-приложения СИЕСТА](https://github.com/pavel7773/Siesta-Android) на Jetpack Compose.
+**Kotlin/Ktor REST API** для [Android-приложения FoodHub](https://github.com/pavel7773/FoodHub) на Jetpack Compose.
 
 **Статус:** активная разработка и тестирование. Проект содержит серверную логику и доступ к PostgreSQL; README не означает завершённый публичный релиз.
 
@@ -122,6 +122,6 @@
 
 ## Связанный Android-проект
 
-[СИЕСТА — Android / Kotlin / Jetpack Compose](https://github.com/pavel7773/Siesta-Android).
+[FoodHub — Kotlin / Jetpack Compose](https://github.com/pavel7773/FoodHub).
 
 **Автор:** Павел Колпаков.
