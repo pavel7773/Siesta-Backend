@@ -35,8 +35,8 @@ dependencies {
     implementation("io.ktor:ktor-server-rate-limit-jvm:3.5.2")
     implementation("io.ktor:ktor-server-forwarded-header-jvm:3.5.2")
 
-    implementation("org.flywaydb:flyway-core:13.8.1")
-    implementation("org.flywaydb:flyway-database-postgresql:13.8.1")
+    implementation("org.flywaydb:flyway-core:13.11.1")
+    implementation("org.flywaydb:flyway-database-postgresql:13.11.1")
 
     implementation("io.ktor:ktor-server-auth-jwt-jvm:3.5.2")
 
