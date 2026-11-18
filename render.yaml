@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: siesta-backend
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: siesta-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: siesta-postgres
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: siesta-postgres
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: siesta-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: siesta-postgres
+          property: password
+      - key: CATERING_JWT_SECRET
+        generateValue: true
+      - key: ACCOUNT_CODE_HMAC_SECRET
+        generateValue: true
+      - key: SMS_TEST_MODE
+        value: "true"
+
+databases:
+  - name: siesta-postgres
+    plan: free
+    region: frankfurt
+    databaseName: siesta
+    user: siesta
