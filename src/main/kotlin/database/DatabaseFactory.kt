@@ -9,24 +9,54 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 private const val JDBC_URL = "jdbc:postgresql://localhost:5432/catering"
 private const val USER = "postgres"
 
+private data class DatabaseConfig(
+    val url: String,
+    val user: String,
+    val password: String
+)
+
 object DatabaseFactory {
 
-    fun init() {
-        val dbUrl = System.getenv("DB_URL")
-            ?: JDBC_URL
-
+    private fun config(): DatabaseConfig {
         val dbUser = System.getenv("DB_USER")
+            ?.takeIf { it.isNotBlank() }
             ?: USER
 
         val dbPassword = System.getenv("DB_PASSWORD")
+            ?.takeIf { it.isNotBlank() }
             ?: System.getenv("CATERING_DB_PASSWORD")
+                ?.takeIf { it.isNotBlank() }
             ?: error("Не задан пароль базы данных")
 
-        Database.connect(
+        val dbUrl = System.getenv("DB_URL")
+            ?.takeIf { it.isNotBlank() }
+            ?: run {
+                val host = System.getenv("DB_HOST")?.takeIf { it.isNotBlank() }
+                val port = System.getenv("DB_PORT")?.takeIf { it.isNotBlank() } ?: "5432"
+                val database = System.getenv("DB_NAME")?.takeIf { it.isNotBlank() }
+
+                if (host != null && database != null) {
+                    "jdbc:postgresql://$host:$port/$database"
+                } else {
+                    JDBC_URL
+                }
+            }
+
+        return DatabaseConfig(
             url = dbUrl,
-            driver = "org.postgresql.Driver",
             user = dbUser,
             password = dbPassword
+        )
+    }
+
+    fun init() {
+        val config = config()
+
+        Database.connect(
+            url = config.url,
+            driver = "org.postgresql.Driver",
+            user = config.user,
+            password = config.password
         )
     }
 
@@ -42,21 +72,13 @@ object DatabaseFactory {
     }
 
     fun migrate() {
-        val dbUrl = System.getenv("DB_URL")
-            ?: JDBC_URL
-
-        val dbUser = System.getenv("DB_USER")
-            ?: USER
-
-        val dbPassword = System.getenv("DB_PASSWORD")
-            ?: System.getenv("CATERING_DB_PASSWORD")
-            ?: error("Не задан пароль базы данных")
+        val config = config()
 
         Flyway.configure()
             .dataSource(
-                dbUrl,
-                dbUser,
-                dbPassword
+                config.url,
+                config.user,
+                config.password
             )
             .baselineOnMigrate(true)
             .baselineVersion("1")
